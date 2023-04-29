@@ -11,6 +11,7 @@
   - [Настройка Slatstack](#настройка-slatstack)
     - [Настройка `master`](#настройка-master)
     - [Настройка `minion`](#настройка-minion)
+    - [Обмен ключами](#обмен-ключами)
 
 ## Подготовка
 
@@ -90,7 +91,6 @@ sudo systemctl enable salt-minion && sudo systemctl start salt-minion
 
 ![Screenshot from 2023-04-29 21-14-46](https://user-images.githubusercontent.com/40892927/235318012-3220e55f-c029-4c9d-88f9-b8da989c5f2f.png)
 
-
 > При установка подразумется, что репозитории добавлены, как описано в разделе [`Добавление Salt репозитория`](#добавление-salt-репозитория)
 
 ### Настройка Slatstack
@@ -99,12 +99,15 @@ sudo systemctl enable salt-minion && sudo systemctl start salt-minion
 
 На `astra-master` создаём сетевой конфиг для salt-master (`/etc/salt/master.d/network.conf`):
 
+> Мы указали адрес, который выдал нам DHCP-сервер в сети [`NatNetwork`](#установка-master-вм-вм01)
+
 ```yaml
 # Указываем ip-адрес интерфейса к которому "забиндится" master
 interface: 10.0.2.15
 ```
 
-> Мы указали адрес, который выдал нам DHCP-сервер в сети [`NatNetwork`](#установка-master-вм-вм01)
+> Если сервис `salt-master` уже запущен (как и в нашем случае), то для применения изменений надо выполнить команду: \
+> `sudo systemctl restart salt-master`
 
 #### Настройка `minion`
 
@@ -120,3 +123,29 @@ master: 10.0.2.15
 ```yaml
 id: astra_1
 ```
+
+> Если сервис `salt-minion` уже запущен (как и в нашем случае), то для применения изменений надо выполнить команду: \
+> `sudo systemctl restart salt-minion`
+
+#### Обмен ключами
+
+После установки и настройки `master` и `minion`, для безопасности, нужно подтвердить, что подключаемый `minion` наш. Это можно сделать через утилиту `salt-key`
+
+На `master` вводим команду `salt-key`:
+
+```shell
+user@astra-master:~$ sudo salt-key 
+Accepted Keys:
+Denied Keys:
+Unaccepted Keys:
+astra_1
+Rejected Keys:
+```
+
+Видим, что ключ нашего `minion` неподтверждённый. Чтобы подтвердить вводим команду `salt-key -a astra_1`:
+
+![Screenshot from 2023-04-29 21-41-50](https://user-images.githubusercontent.com/40892927/235319198-383faf07-6265-4446-bf12-2edf4a162371.png)
+
+Проверяем, что установка и конфигурация прошла успешно и `master` видит наш `minion` (`astra_1`):
+
+![Screenshot from 2023-04-29 21-44-09](https://user-images.githubusercontent.com/40892927/235319191-e689c734-3c9e-4f58-8600-86e4a0e25d9d.png)
