@@ -12,6 +12,9 @@
     - [Настройка `master`](#настройка-master)
     - [Настройка `minion`](#настройка-minion)
     - [Обмен ключами](#обмен-ключами)
+- [Устанавливаем nginx через Salt](#устанавливаем-nginx-через-salt)
+  - [Подготавливаем пакет](#подготавливаем-пакет)
+  - [Инициализируем Salt State файлы (`.sls`)](#инициализируем-salt-state-файлы-sls)
 
 ## Подготовка
 
@@ -149,3 +152,51 @@ Rejected Keys:
 Проверяем, что установка и конфигурация прошла успешно и `master` видит наш `minion` (`astra_1`):
 
 ![Screenshot from 2023-04-29 21-44-09](https://user-images.githubusercontent.com/40892927/235319191-e689c734-3c9e-4f58-8600-86e4a0e25d9d.png)
+
+## Устанавливаем nginx через Salt
+
+### Подготавливаем пакет
+
+Скачаем предварительно `deb-пакет` `nginx` с [официального сайта](http://nginx.org/packages/debian/pool/nginx/n/nginx/) (для Debian `bullseye`) на `astra-master`
+
+```sh
+# Предварительно создаём папку, где будем хранить nginx
+sudo mkdir -p /srv/salt/nginx
+
+sudo curl -fsSL -o /srv/salt/nginx/nginx.deb http://nginx.org/packages/debian/pool/nginx/n/nginx/nginx_1.24.0-1~bullseye_amd64.deb
+```
+
+### Инициализируем Salt State файлы (`.sls`)
+
+Теперь нам надо написать "инструкцию" как установить наш `nginx` пакет
+
+Напишем `state` для передачи файла на наш `minion` (`/srv/salt/nginx/init.sls`):
+
+```yaml
+# Путь сохранения
+/tmp/nginx.deb:
+  file.managed:
+    # Путь на master относительно "root folder" (/srv/salt)
+    - source: salt://nginx/nginx.deb
+    # Права доступа к файлу
+    - user: root
+    - group: root
+    - mode: 644
+```
+
+После создаём конфигурацию запуска наших "states" (пока одного) для определённых `minions` (`/srv/salt/top.sls`):
+
+```yaml
+base:
+  # Применяем для всех minion'ов с названием astra
+  'astra*':
+    - nginx
+```
+
+Теперь проверим, что всё работает. Запустим наш `state`:
+
+![Screenshot from 2023-04-29 23-08-55](https://user-images.githubusercontent.com/40892927/235322347-a0077203-7c7f-4c7a-99ef-bc2188514500.png)
+
+И мы можем убедиться, что файл был передан на наш `minion`:
+
+![Screenshot from 2023-04-29 23-09-49](https://user-images.githubusercontent.com/40892927/235322354-a37a7004-239a-4cf4-adf9-1a6ed924d660.png)
