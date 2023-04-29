@@ -193,7 +193,7 @@ base:
     - nginx
 ```
 
-Теперь проверим, что всё работает. Запустим наш `state`:
+Теперь проверим, что всё работает. Запустим наш `state` командой `sudo salt astra_1 state.apply`:
 
 ![Screenshot from 2023-04-29 23-08-55](https://user-images.githubusercontent.com/40892927/235322347-a0077203-7c7f-4c7a-99ef-bc2188514500.png)
 
