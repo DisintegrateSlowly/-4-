@@ -15,6 +15,8 @@
 - [Устанавливаем nginx через Salt](#устанавливаем-nginx-через-salt)
   - [Подготавливаем пакет](#подготавливаем-пакет)
   - [Инициализируем Salt State файлы (`.sls`)](#инициализируем-salt-state-файлы-sls)
+  - [Устанавливаем nginx](#устанавливаем-nginx)
+  - [Меняем главную страницу в nginx](#меняем-главную-страницу-в-nginx)
 
 ## Подготовка
 
@@ -157,13 +159,13 @@ Rejected Keys:
 
 ### Подготавливаем пакет
 
-Скачаем предварительно `deb-пакет` `nginx` с [официального сайта](http://nginx.org/packages/debian/pool/nginx/n/nginx/) (для Debian `bullseye`) на `astra-master`
+Скачаем предварительно `deb-пакет` `nginx` с [официального сайта](http://nginx.org/packages/debian/pool/nginx/n/nginx/) (для Debian `jessie`) на `astra-master`
 
 ```sh
 # Предварительно создаём папку, где будем хранить nginx
 sudo mkdir -p /srv/salt/nginx
 
-sudo curl -fsSL -o /srv/salt/nginx/nginx.deb http://nginx.org/packages/debian/pool/nginx/n/nginx/nginx_1.24.0-1~bullseye_amd64.deb
+sudo curl -fsSL -o /srv/salt/nginx/nginx.deb http://nginx.org/packages/debian/pool/nginx/n/nginx/nginx_1.16.0-1~jessie_amd64.deb
 ```
 
 ### Инициализируем Salt State файлы (`.sls`)
@@ -200,3 +202,42 @@ base:
 И мы можем убедиться, что файл был передан на наш `minion`:
 
 ![Screenshot from 2023-04-29 23-09-49](https://user-images.githubusercontent.com/40892927/235322354-a37a7004-239a-4cf4-adf9-1a6ed924d660.png)
+
+### Устанавливаем nginx
+
+> К сожалению через модуль `pkg.installed` не вышло установить, так как модуль отсутствовал(?) - была ошибка `State 'pkg.installed' was not found in SLS 'nginx'` и команда `sudo salt astra_1 pkg.install nginx` выводила `'pkg.install' is not available.`
+
+Установим nginx через команду `apt`. Для этого дополним наш предыдущий файл (`/srv/salt/nginx/init.sls`):
+
+```yaml
+nginx_install_deb:
+  cmd.run:
+    # В apt можно передавать файл deb-пакета напрямую
+    - name: apt-get install -y /tmp/nginx.deb
+    - require:
+      - file: /tmp/nginx.deb
+
+nginx_service_check:
+  service.running:
+    - name: nginx
+    - require:
+      - cmd: nginx_install_deb
+```
+
+### Меняем главную страницу в nginx
+
+Нам нужно заменить приветсвие на главной странице, которую "сёрвит" nginx. Это делается через модуль `file.replace`. Также дополним наш state-файл (`/srv/salt/nginx/init.sls`):
+
+```yaml
+/usr/share/nginx/html/index.html:
+  file.replace:
+    - pattern: '<h1>Welcome to nginx!</h1>'
+    - repl: '<h1>Hello GreenAtom!</h1>'
+    - show_changes: True
+```
+
+![Screenshot from 2023-04-30 01-05-50](https://user-images.githubusercontent.com/40892927/235326020-5c80526f-3f64-457a-9773-627758325e6c.png)
+
+И эти изменения можем увидеть в браузере на VM `astra-minion`:
+
+![Screenshot from 2023-04-30 01-07-01](https://user-images.githubusercontent.com/40892927/235326049-394a8b10-3d13-4b17-8077-a882369ec245.png)
